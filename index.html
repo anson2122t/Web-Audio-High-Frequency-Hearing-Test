@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Web Audio 全頻段聽覺比較測試</title>
+<title>Web Audio 全頻段聽覺比較測試 v4</title>
 <style>
   :root {
     color-scheme: dark;
@@ -234,12 +234,178 @@
     line-height: 1.65;
     margin-top: 18px;
   }
+
+  .test-grid {
+    display: grid;
+    grid-template-columns: 1.15fr .85fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 820px) {
+    .test-grid { grid-template-columns: 1fr; }
+  }
+
+  .freq-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .freq-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--panel2);
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px;
+  }
+
+  .freq-check input {
+    accent-color: var(--accent);
+  }
+
+  .test-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-top: 12px;
+  }
+
+  .answer-btn {
+    min-width: 128px;
+    font-size: 16px;
+  }
+
+  .answer-btn.heard {
+    background: #214b3b;
+    border-color: #38745d;
+  }
+
+  .answer-btn.not-heard {
+    background: #4e2929;
+    border-color: #815050;
+  }
+
+  button:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .progress-shell {
+    width: 100%;
+    height: 10px;
+    background: #272d38;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 10px;
+  }
+
+  .progress-shell > div {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #5f85e7, #70d6a8);
+    transition: width .2s ease;
+  }
+
+  .result-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+  }
+
+  table.results {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 620px;
+  }
+
+  table.results th,
+  table.results td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  table.results th:first-child,
+  table.results td:first-child {
+    text-align: left;
+  }
+
+  table.results th {
+    color: var(--muted);
+    font-weight: 650;
+    background: rgba(255,255,255,.025);
+  }
+
+  table.results tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .delta-pos { color: #ffb0b0; }
+  .delta-neg { color: #9bd5ff; }
+  .delta-zero { color: var(--ok); }
+
+  .chart-box {
+    position: relative;
+    width: 100%;
+    height: 330px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--panel2);
+  }
+
+  #thresholdChart {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  @media (max-width: 620px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+  }
+
+  .kpi {
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 12px;
+    background: var(--panel2);
+  }
+
+  .kpi .v {
+    font-size: 23px;
+    font-weight: 760;
+    margin-top: 3px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .inline-number {
+    min-width: 70px;
+    text-align: center;
+    font-weight: 760;
+    font-variant-numeric: tabular-nums;
+  }
+
 </style>
 </head>
 
 <body>
 <main class="wrap">
-  <h1>Web Audio 全頻段聽覺比較測試</h1>
+  <h1>Web Audio 全頻段聽覺比較測試 <span style="font-size:.42em;color:var(--muted);vertical-align:middle">v4</span></h1>
   <p class="lead">
     由瀏覽器直接用 <strong>Web Audio API</strong> 產生純正弦波。唔經 YouTube、
     影片壓縮或變速演算法，適合做 20 Hz～20 kHz 左右耳「相對比較」。
@@ -415,6 +581,174 @@
   </section>
 
   <section class="card" style="margin-top:16px">
+    <h2>左右耳平衡測試 <span class="pill">v4</span></h2>
+    <p class="small muted">
+      以下兩個模式量度嘅係<strong>目前耳機 + DAC + 配戴 + 耳朵整條鏈路嘅相對差異</strong>。
+      結果使用 dBFS，唔係臨床 dB HL，亦唔可以診斷聽力損失。
+    </p>
+
+    <div class="test-grid" style="margin-top:14px">
+      <div>
+        <h3 style="margin:0 0 8px;font-size:16px">A. 半自動 Threshold Staircase</h3>
+        <p class="small muted" style="margin-top:0">
+          程式會隨機安排左右耳／頻率，畫面唔顯示當前測試邊一耳。每次短音後只答「聽到」或「聽唔到」；
+          系統會自動調整數位電平並估算相對聽閾。
+        </p>
+
+        <label>選擇頻率（預設適合做左右比較）</label>
+        <div class="freq-checks" id="thresholdFreqs" style="margin-top:9px">
+          <label class="freq-check"><input type="checkbox" value="250" checked>250 Hz</label>
+          <label class="freq-check"><input type="checkbox" value="500" checked>500 Hz</label>
+          <label class="freq-check"><input type="checkbox" value="1000" checked>1 kHz</label>
+          <label class="freq-check"><input type="checkbox" value="2000" checked>2 kHz</label>
+          <label class="freq-check"><input type="checkbox" value="4000" checked>4 kHz</label>
+          <label class="freq-check"><input type="checkbox" value="8000" checked>8 kHz</label>
+          <label class="freq-check"><input type="checkbox" value="12000">12 kHz</label>
+          <label class="freq-check"><input type="checkbox" value="14000">14 kHz</label>
+          <label class="freq-check"><input type="checkbox" value="15000">15 kHz</label>
+          <label class="freq-check"><input type="checkbox" value="16000">16 kHz</label>
+        </div>
+
+        <div class="test-actions">
+          <button id="thresholdStart" class="primary">開始隨機測試</button>
+          <button id="thresholdReplay" disabled>重播今次短音</button>
+          <button id="thresholdStop" class="stop" disabled>停止測試</button>
+        </div>
+
+        <div style="margin-top:14px">
+          <div id="thresholdStatus" class="small muted">尚未開始</div>
+          <div class="progress-shell"><div id="thresholdProgress"></div></div>
+        </div>
+
+        <div class="test-actions">
+          <button id="thresholdHeard" class="answer-btn heard" disabled>✓ 聽到</button>
+          <button id="thresholdNotHeard" class="answer-btn not-heard" disabled>✕ 聽唔到</button>
+        </div>
+
+        <div class="small muted" style="margin-top:10px">
+          演算法使用 reversal staircase：初期以 6 dB 步進，取得兩次 reversal 後改為 3 dB；
+          最多測至 <strong>−24 dBFS</strong>，唔會因為「聽唔到」而無限制增加輸出。
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin:0 0 8px;font-size:16px">B. Equal-Loudness A/B</h3>
+        <p class="small muted" style="margin-top:0">
+          一邊固定 −42 dBFS，另一邊由你微調，直到主觀上兩邊一樣響。
+          呢個模式量度「等響所需相對增益」，唔係最低可聽閾值。
+        </p>
+
+        <div class="stack">
+          <div>
+            <label for="equalFreq">頻率</label>
+            <select id="equalFreq">
+              <option value="250">250 Hz</option>
+              <option value="500">500 Hz</option>
+              <option value="1000" selected>1 kHz</option>
+              <option value="2000">2 kHz</option>
+              <option value="4000">4 kHz</option>
+              <option value="8000">8 kHz</option>
+              <option value="12000">12 kHz</option>
+              <option value="14000">14 kHz</option>
+              <option value="15000">15 kHz</option>
+              <option value="16000">16 kHz</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="equalReference">固定參考耳</label>
+            <select id="equalReference">
+              <option value="left" selected>左耳固定 −42 dBFS</option>
+              <option value="right">右耳固定 −42 dBFS</option>
+            </select>
+          </div>
+
+          <div>
+            <div class="row" style="justify-content:space-between">
+              <label for="equalOffset">另一耳相對增益</label>
+              <span class="pill"><span id="equalOffsetReadout">+0.0</span> dB</span>
+            </div>
+            <input id="equalOffset" type="range" min="-12" max="12" step="0.5" value="0">
+          </div>
+
+          <div class="row">
+            <button id="equalMinus">−0.5 dB</button>
+            <button id="equalPlus">+0.5 dB</button>
+            <button id="equalPlay" class="primary">播放 A → B</button>
+          </div>
+
+          <button id="equalSave">記錄目前等響結果</button>
+
+          <div id="equalStatus" class="small muted">
+            目前：左右耳輸出相同數位電平。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="row" style="justify-content:space-between;align-items:flex-end">
+      <div>
+        <h3 style="margin:0;font-size:16px">Threshold 結果</h3>
+        <div class="small muted" id="resultSummary">完成測試後會喺呢度比較左右耳。</div>
+      </div>
+      <div class="row">
+        <button id="exportCsv" disabled>匯出 CSV</button>
+        <button id="clearResults" disabled>清除結果</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="small muted">已完成頻率</div>
+        <div class="v" id="kpiCompleted">0</div>
+      </div>
+      <div class="kpi">
+        <div class="small muted">平均 |R−L|</div>
+        <div class="v" id="kpiMeanDelta">—</div>
+      </div>
+      <div class="kpi">
+        <div class="small muted">最大 |R−L|</div>
+        <div class="v" id="kpiMaxDelta">—</div>
+      </div>
+    </div>
+
+    <div class="result-wrap" style="margin-top:12px">
+      <table class="results">
+        <thead>
+          <tr>
+            <th>頻率</th>
+            <th>左耳 Threshold</th>
+            <th>右耳 Threshold</th>
+            <th>R − L</th>
+            <th>解讀</th>
+          </tr>
+        </thead>
+        <tbody id="thresholdResultBody">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted)">尚未有結果</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="chart-box" style="margin-top:12px">
+      <canvas id="thresholdChart"></canvas>
+    </div>
+
+    <details style="margin-top:14px">
+      <summary>點樣解讀 R − L？</summary>
+      <div class="small" style="margin-top:8px;line-height:1.75">
+        <p><strong>正數</strong>：右耳需要較大數位訊號先達到 threshold，例如 +5 dB 即右耳相對要大約多 5 dB。</p>
+        <p><strong>負數</strong>：左耳需要較大數位訊號。</p>
+        <p>
+          但呢個差值包含耳機左右單元、配戴密封、耳道形狀等因素。
+          尤其 12～16 kHz，幾毫米耳機位置變化都可能令結果改變，所以應該重測，而唔好用一次結果下醫療結論。
+        </p>
+      </div>
+    </details>
+  </section>
+
+  <section class="card" style="margin-top:16px">
     <h2>建議測試方式</h2>
     <div class="small muted">
       <ol style="margin:0; padding-left:20px; line-height:1.9">
@@ -447,7 +781,7 @@
   </section>
 
   <footer>
-    此工具只供非醫療用途嘅 20 Hz～20 kHz 相對比較與技術實驗。若近期曾出現單側突發耳鳴，
+    此工具只供非醫療用途嘅 20 Hz～20 kHz 相對比較、Threshold Staircase 與等響實驗。若近期曾出現單側突發耳鳴，
     並伴隨持續聽力下降、左右耳明顯不對稱、耳塞感或眩暈，應由耳鼻喉科／聽力師作正式檢查。
   </footer>
 </main>
@@ -472,9 +806,54 @@
   const audioInfoNote = $('#audioInfoNote');
   const channelStatus = $('#channelStatus');
 
+  const thresholdStart = $('#thresholdStart');
+  const thresholdReplay = $('#thresholdReplay');
+  const thresholdStop = $('#thresholdStop');
+  const thresholdHeard = $('#thresholdHeard');
+  const thresholdNotHeard = $('#thresholdNotHeard');
+  const thresholdStatus = $('#thresholdStatus');
+  const thresholdProgress = $('#thresholdProgress');
+  const thresholdResultBody = $('#thresholdResultBody');
+  const resultSummary = $('#resultSummary');
+  const exportCsv = $('#exportCsv');
+  const clearResults = $('#clearResults');
+  const thresholdCanvas = $('#thresholdChart');
+
+  const equalFreq = $('#equalFreq');
+  const equalReference = $('#equalReference');
+  const equalOffset = $('#equalOffset');
+  const equalOffsetReadout = $('#equalOffsetReadout');
+  const equalStatus = $('#equalStatus');
+
   let audioCtx = null;
   let active = null;
   let meterTimer = null;
+
+  const thresholdState = {
+    running: false,
+    queue: [],
+    index: 0,
+    current: null,
+    results: {},
+    presentations: 0,
+    awaitingResponse: false
+  };
+
+  const equalResults = {};
+
+  function shuffle(array) {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  function formatFreq(freq) {
+    if (freq >= 1000 && freq % 1000 === 0) return `${freq / 1000} kHz`;
+    return `${freq.toLocaleString()} Hz`;
+  }
 
   function clamp(v, min, max) {
     return Math.min(max, Math.max(min, v));
@@ -698,6 +1077,508 @@
     }, { once: true });
   }
 
+
+  async function playTestTone(ear, frequency, dbfs, duration = 0.7) {
+    stopTone();
+
+    const ctx = await ensureContext();
+    const targetGain = dbToGain(clamp(dbfs, -90, -24));
+
+    return new Promise((resolve, reject) => {
+      try {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(frequency, ctx.currentTime);
+
+        const master = ctx.createGain();
+        master.gain.setValueAtTime(0, ctx.currentTime);
+
+        const leftGain = ctx.createGain();
+        const rightGain = ctx.createGain();
+        leftGain.gain.value = ear === 'left' ? 1 : 0;
+        rightGain.gain.value = ear === 'right' ? 1 : 0;
+
+        const merger = ctx.createChannelMerger(2);
+        osc.connect(master);
+        master.connect(leftGain);
+        master.connect(rightGain);
+        leftGain.connect(merger, 0, 0);
+        rightGain.connect(merger, 0, 1);
+        merger.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+        const fade = Math.min(0.035, duration / 5);
+        master.gain.setValueAtTime(0, now);
+        master.gain.linearRampToValueAtTime(targetGain, now + fade);
+        master.gain.setValueAtTime(targetGain, now + Math.max(fade, duration - fade));
+        master.gain.linearRampToValueAtTime(0, now + duration);
+
+        active = { osc, master, ctx };
+        osc.start(now);
+        osc.stop(now + duration + 0.025);
+
+        osc.addEventListener('ended', () => {
+          if (active && active.osc === osc) active = null;
+          resolve();
+        }, { once: true });
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  function selectedThresholdFrequencies() {
+    return [...document.querySelectorAll('#thresholdFreqs input:checked')]
+      .map(el => Number(el.value))
+      .filter(Number.isFinite)
+      .sort((a, b) => a - b);
+  }
+
+  function initialThresholdLevel(freq) {
+    if (freq >= 14000) return -39;
+    if (freq >= 12000) return -45;
+    if (freq >= 8000) return -48;
+    return -54;
+  }
+
+  function setThresholdAnswerEnabled(enabled) {
+    thresholdHeard.disabled = !enabled;
+    thresholdNotHeard.disabled = !enabled;
+    thresholdReplay.disabled = !thresholdState.running || thresholdState.current == null;
+    thresholdState.awaitingResponse = enabled;
+  }
+
+  async function presentThresholdTrial(isReplay = false) {
+    if (!thresholdState.running || !thresholdState.current) return;
+
+    setThresholdAnswerEnabled(false);
+    const item = thresholdState.current;
+    if (!isReplay) {
+      item.trials += 1;
+      thresholdState.presentations += 1;
+    }
+
+    const totalTasks = thresholdState.queue.length;
+    const taskNumber = thresholdState.index + 1;
+    const pct = totalTasks ? ((thresholdState.index) / totalTasks) * 100 : 0;
+    thresholdProgress.style.width = `${pct}%`;
+
+    thresholdStatus.innerHTML =
+      `<span class="ok">測試進行中</span> · 項目 ${taskNumber}/${totalTasks} · ` +
+      `第 ${item.trials} 次短音。請只判斷有冇聽到，唔需要估邊一耳。`;
+
+    try {
+      await playTestTone(item.ear, item.freq, item.level, 0.72);
+      if (thresholdState.running && thresholdState.current === item) {
+        thresholdStatus.textContent =
+          `項目 ${taskNumber}/${totalTasks} · 請回答頭先個短音係「聽到」定「聽唔到」。`;
+        setThresholdAnswerEnabled(true);
+      }
+    } catch (err) {
+      thresholdStatus.innerHTML = `<span class="danger">${err.message}</span>`;
+      stopThresholdTest(false);
+    }
+  }
+
+  function finishThresholdItem(value, note = '') {
+    const item = thresholdState.current;
+    if (!item) return;
+
+    if (!thresholdState.results[item.freq]) thresholdState.results[item.freq] = {};
+    thresholdState.results[item.freq][item.ear] = {
+      threshold: value,
+      note,
+      trials: item.trials,
+      reversals: [...item.reversals]
+    };
+
+    thresholdState.index += 1;
+    thresholdState.current = null;
+    renderThresholdResults();
+
+    if (thresholdState.index >= thresholdState.queue.length) {
+      thresholdState.running = false;
+      thresholdProgress.style.width = '100%';
+      thresholdStatus.innerHTML =
+        `<span class="ok">測試完成。</span> 已完成 ${thresholdState.queue.length} 個耳／頻率項目。`;
+      thresholdStart.disabled = false;
+      thresholdStop.disabled = true;
+      thresholdReplay.disabled = true;
+      setThresholdAnswerEnabled(false);
+      return;
+    }
+
+    setTimeout(beginNextThresholdItem, 350);
+  }
+
+  function beginNextThresholdItem() {
+    if (!thresholdState.running) return;
+
+    const task = thresholdState.queue[thresholdState.index];
+    thresholdState.current = {
+      ...task,
+      level: initialThresholdLevel(task.freq),
+      step: 6,
+      lastMove: null,
+      reversals: [],
+      trials: 0,
+      maxMisses: 0,
+      minHits: 0
+    };
+
+    presentThresholdTrial();
+  }
+
+  function handleThresholdResponse(heard) {
+    if (!thresholdState.running || !thresholdState.current || !thresholdState.awaitingResponse) return;
+    setThresholdAnswerEnabled(false);
+
+    const item = thresholdState.current;
+    const move = heard ? 'down' : 'up';
+
+    if (!heard && item.level >= -24) {
+      item.maxMisses += 1;
+      if (item.maxMisses >= 2) {
+        finishThresholdItem(null, 'NR @ −24 dBFS');
+        return;
+      }
+    } else {
+      item.maxMisses = 0;
+    }
+
+    if (heard && item.level <= -72) {
+      item.minHits += 1;
+      if (item.minHits >= 2) {
+        finishThresholdItem(-72, '≤ −72 dBFS');
+        return;
+      }
+    } else {
+      item.minHits = 0;
+    }
+
+    if (item.lastMove && move !== item.lastMove) {
+      item.reversals.push(item.level);
+      if (item.reversals.length === 2) item.step = 3;
+    }
+
+    item.lastMove = move;
+
+    if (item.reversals.length >= 6) {
+      const last = item.reversals.slice(-4);
+      const mean = last.reduce((a, b) => a + b, 0) / last.length;
+      finishThresholdItem(Math.round(mean * 2) / 2, '6 reversals');
+      return;
+    }
+
+    if (item.trials >= 22) {
+      if (item.reversals.length >= 2) {
+        const last = item.reversals.slice(-Math.min(4, item.reversals.length));
+        const mean = last.reduce((a, b) => a + b, 0) / last.length;
+        finishThresholdItem(Math.round(mean * 2) / 2, 'trial limit');
+      } else {
+        finishThresholdItem(item.level, 'trial limit / low confidence');
+      }
+      return;
+    }
+
+    const next = heard ? item.level - item.step : item.level + item.step;
+    item.level = clamp(next, -72, -24);
+    setTimeout(() => presentThresholdTrial(), 250);
+  }
+
+  function startThresholdTest() {
+    const freqs = selectedThresholdFrequencies();
+    if (!freqs.length) {
+      thresholdStatus.innerHTML = '<span class="danger">請至少選擇一個頻率。</span>';
+      return;
+    }
+
+    const tasks = [];
+    freqs.forEach(freq => {
+      tasks.push({ freq, ear: 'left' });
+      tasks.push({ freq, ear: 'right' });
+    });
+
+    thresholdState.running = true;
+    thresholdState.queue = shuffle(tasks);
+    thresholdState.index = 0;
+    thresholdState.current = null;
+    thresholdState.results = {};
+    thresholdState.presentations = 0;
+
+    thresholdStart.disabled = true;
+    thresholdStop.disabled = false;
+    clearResults.disabled = false;
+    exportCsv.disabled = true;
+    thresholdProgress.style.width = '0%';
+    renderThresholdResults();
+    beginNextThresholdItem();
+  }
+
+  function stopThresholdTest(userInitiated = true) {
+    thresholdState.running = false;
+    thresholdState.current = null;
+    stopTone();
+    setThresholdAnswerEnabled(false);
+    thresholdStart.disabled = false;
+    thresholdStop.disabled = true;
+    thresholdReplay.disabled = true;
+    if (userInitiated) thresholdStatus.textContent = '測試已停止；已完成嘅結果會保留。';
+    renderThresholdResults();
+  }
+
+  function thresholdValueText(entry) {
+    if (!entry) return '—';
+    if (entry.threshold == null) return 'NR';
+    if (entry.note.startsWith('≤')) return `≤ ${entry.threshold.toFixed(0)} dBFS`;
+    return `${entry.threshold.toFixed(1)} dBFS`;
+  }
+
+  function renderThresholdResults() {
+    const freqs = Object.keys(thresholdState.results).map(Number).sort((a, b) => a - b);
+    const complete = [];
+    let rows = '';
+
+    for (const freq of freqs) {
+      const pair = thresholdState.results[freq] || {};
+      const l = pair.left;
+      const r = pair.right;
+
+      let deltaText = '—';
+      let deltaClass = '';
+      let interpretation = '等待另一耳';
+
+      if (l && r && l.threshold != null && r.threshold != null) {
+        const delta = r.threshold - l.threshold;
+        complete.push({ freq, left: l.threshold, right: r.threshold, delta });
+        deltaText = `${delta >= 0 ? '+' : ''}${delta.toFixed(1)} dB`;
+        deltaClass = Math.abs(delta) < 1 ? 'delta-zero' : delta > 0 ? 'delta-pos' : 'delta-neg';
+        if (Math.abs(delta) < 1) interpretation = '非常接近';
+        else if (delta > 0) interpretation = '右耳需較大訊號';
+        else interpretation = '左耳需較大訊號';
+      } else if ((l && l.threshold == null) || (r && r.threshold == null)) {
+        interpretation = '有項目達輸出上限仍無反應';
+      }
+
+      rows += `<tr>
+        <td>${formatFreq(freq)}</td>
+        <td>${thresholdValueText(l)}</td>
+        <td>${thresholdValueText(r)}</td>
+        <td class="${deltaClass}">${deltaText}</td>
+        <td>${interpretation}</td>
+      </tr>`;
+    }
+
+    thresholdResultBody.innerHTML = rows ||
+      '<tr><td colspan="5" style="text-align:center;color:var(--muted)">尚未有結果</td></tr>';
+
+    const deltas = complete.map(x => Math.abs(x.delta));
+    const mean = deltas.length ? deltas.reduce((a, b) => a + b, 0) / deltas.length : null;
+    const max = deltas.length ? Math.max(...deltas) : null;
+
+    $('#kpiCompleted').textContent = complete.length.toString();
+    $('#kpiMeanDelta').textContent = mean == null ? '—' : `${mean.toFixed(1)} dB`;
+    $('#kpiMaxDelta').textContent = max == null ? '—' : `${max.toFixed(1)} dB`;
+
+    if (complete.length) {
+      resultSummary.textContent =
+        `已有 ${complete.length} 個頻率完成左右耳比較。R−L 正數代表右耳需要較大數位訊號。`;
+    } else {
+      resultSummary.textContent = '完成左右耳同一頻率後，先會計算 R−L。';
+    }
+
+    exportCsv.disabled = complete.length === 0;
+    clearResults.disabled = freqs.length === 0;
+    drawThresholdChart(complete);
+  }
+
+  function drawThresholdChart(data) {
+    const canvas = thresholdCanvas;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = Math.max(1, Math.round(rect.width * dpr));
+    canvas.height = Math.max(1, Math.round(rect.height * dpr));
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width;
+    const h = rect.height;
+    const pad = { left: 56, right: 18, top: 24, bottom: 48 };
+    const plotW = Math.max(1, w - pad.left - pad.right);
+    const plotH = Math.max(1, h - pad.top - pad.bottom);
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.font = '12px system-ui, -apple-system, sans-serif';
+    ctx.textBaseline = 'middle';
+
+    const css = getComputedStyle(document.documentElement);
+    const line = css.getPropertyValue('--line').trim() || '#303746';
+    const muted = css.getPropertyValue('--muted').trim() || '#a9b1bf';
+    const accent = css.getPropertyValue('--accent').trim() || '#7aa2ff';
+    const ok = css.getPropertyValue('--ok').trim() || '#70d6a8';
+
+    const yMin = -72;
+    const yMax = -24;
+
+    for (let v = yMin; v <= yMax; v += 6) {
+      const y = pad.top + ((v - yMin) / (yMax - yMin)) * plotH;
+      ctx.strokeStyle = line;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(w - pad.right, y);
+      ctx.stroke();
+
+      ctx.fillStyle = muted;
+      ctx.textAlign = 'right';
+      ctx.fillText(`${v}`, pad.left - 8, y);
+    }
+
+    ctx.save();
+    ctx.translate(14, pad.top + plotH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = muted;
+    ctx.textAlign = 'center';
+    ctx.fillText('Threshold (dBFS) — 越負代表越細聲已可察覺', 0, 0);
+    ctx.restore();
+
+    if (!data.length) {
+      ctx.fillStyle = muted;
+      ctx.textAlign = 'center';
+      ctx.fillText('完成 Threshold 測試後會顯示左右耳曲線', w / 2, h / 2);
+      return;
+    }
+
+    const xFor = (i) => data.length === 1
+      ? pad.left + plotW / 2
+      : pad.left + (i / (data.length - 1)) * plotW;
+    const yFor = (v) => pad.top + ((v - yMin) / (yMax - yMin)) * plotH;
+
+    data.forEach((d, i) => {
+      const x = xFor(i);
+      ctx.fillStyle = muted;
+      ctx.textAlign = 'center';
+      ctx.fillText(formatFreq(d.freq), x, h - 22);
+    });
+
+    function drawSeries(key, color) {
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      data.forEach((d, i) => {
+        const x = xFor(i);
+        const y = yFor(d[key]);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      data.forEach((d, i) => {
+        const x = xFor(i);
+        const y = yFor(d[key]);
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    drawSeries('left', accent);
+    drawSeries('right', ok);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = accent;
+    ctx.fillText('● 左耳', pad.left, 12);
+    ctx.fillStyle = ok;
+    ctx.fillText('● 右耳', pad.left + 70, 12);
+  }
+
+  function exportThresholdCsv() {
+    const freqs = Object.keys(thresholdState.results).map(Number).sort((a, b) => a - b);
+    const lines = [
+      ['Frequency_Hz', 'Left_Threshold_dBFS', 'Right_Threshold_dBFS', 'R_minus_L_dB', 'Left_Note', 'Right_Note']
+    ];
+
+    freqs.forEach(freq => {
+      const pair = thresholdState.results[freq] || {};
+      const l = pair.left || {};
+      const r = pair.right || {};
+      const delta = Number.isFinite(l.threshold) && Number.isFinite(r.threshold)
+        ? (r.threshold - l.threshold).toFixed(1)
+        : '';
+      lines.push([
+        freq,
+        Number.isFinite(l.threshold) ? l.threshold : '',
+        Number.isFinite(r.threshold) ? r.threshold : '',
+        delta,
+        l.note || '',
+        r.note || ''
+      ]);
+    });
+
+    const csv = '\uFEFF' + lines.map(row =>
+      row.map(v => `"${String(v).replaceAll('"', '""')}"`).join(',')
+    ).join('\r\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hearing-balance-threshold-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function clearThresholdResults() {
+    thresholdState.results = {};
+    renderThresholdResults();
+    thresholdProgress.style.width = '0%';
+    thresholdStatus.textContent = thresholdState.running ? thresholdStatus.textContent : '尚未開始';
+  }
+
+  function updateEqualOffsetUi() {
+    const value = Number(equalOffset.value);
+    equalOffsetReadout.textContent = `${value >= 0 ? '+' : ''}${value.toFixed(1)}`;
+
+    const ref = equalReference.value;
+    const normalizedRminusL = ref === 'left' ? value : -value;
+    const otherEar = ref === 'left' ? '右耳' : '左耳';
+
+    equalStatus.textContent =
+      `${otherEar} 相對參考耳 ${value >= 0 ? '+' : ''}${value.toFixed(1)} dB；` +
+      `換算 R−L = ${normalizedRminusL >= 0 ? '+' : ''}${normalizedRminusL.toFixed(1)} dB。`;
+  }
+
+  async function playEqualPair() {
+    const freq = Number(equalFreq.value);
+    const ref = equalReference.value;
+    const offset = Number(equalOffset.value);
+    const refLevel = -42;
+    const otherLevel = clamp(refLevel + offset, -60, -24);
+    const otherEar = ref === 'left' ? 'right' : 'left';
+
+    equalStatus.textContent = '播放 A（參考耳）…';
+    await playTestTone(ref, freq, refLevel, 0.65);
+    await new Promise(r => setTimeout(r, 260));
+    equalStatus.textContent = '播放 B（比較耳）…';
+    await playTestTone(otherEar, freq, otherLevel, 0.65);
+    updateEqualOffsetUi();
+  }
+
+  function saveEqualResult() {
+    const freq = Number(equalFreq.value);
+    const ref = equalReference.value;
+    const offset = Number(equalOffset.value);
+    const normalized = ref === 'left' ? offset : -offset;
+    equalResults[freq] = normalized;
+    equalStatus.innerHTML =
+      `<span class="ok">已記錄：</span>${formatFreq(freq)} · R−L = ` +
+      `${normalized >= 0 ? '+' : ''}${normalized.toFixed(1)} dB（主觀等響）`;
+  }
+
   freqInput.addEventListener('input', () => setFrequency(freqInput.value));
 
   $$('[data-delta]').forEach(btn => {
@@ -747,12 +1628,42 @@
     }
   });
 
-  window.addEventListener('pagehide', stopTone);
+  thresholdStart.addEventListener('click', startThresholdTest);
+  thresholdStop.addEventListener('click', () => stopThresholdTest(true));
+  thresholdReplay.addEventListener('click', () => presentThresholdTrial(true));
+  thresholdHeard.addEventListener('click', () => handleThresholdResponse(true));
+  thresholdNotHeard.addEventListener('click', () => handleThresholdResponse(false));
+  exportCsv.addEventListener('click', exportThresholdCsv);
+  clearResults.addEventListener('click', clearThresholdResults);
+
+  equalOffset.addEventListener('input', updateEqualOffsetUi);
+  equalReference.addEventListener('change', updateEqualOffsetUi);
+  $('#equalMinus').addEventListener('click', () => {
+    equalOffset.value = clamp(Number(equalOffset.value) - 0.5, -12, 12);
+    updateEqualOffsetUi();
+  });
+  $('#equalPlus').addEventListener('click', () => {
+    equalOffset.value = clamp(Number(equalOffset.value) + 0.5, -12, 12);
+    updateEqualOffsetUi();
+  });
+  $('#equalPlay').addEventListener('click', () => playEqualPair().catch(err => {
+    equalStatus.innerHTML = `<span class="danger">${err.message}</span>`;
+  }));
+  $('#equalSave').addEventListener('click', saveEqualResult);
+
+  window.addEventListener('resize', () => renderThresholdResults());
+
+  window.addEventListener('pagehide', () => {
+    stopTone();
+    thresholdState.running = false;
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) stopTone();
   });
 
   setFrequency(15000);
+  updateEqualOffsetUi();
+  renderThresholdResults();
 })();
 </script>
 </body>
