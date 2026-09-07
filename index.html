@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Web Audio 高頻聽覺比較測試</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel2: #1d212b;
+    --text: #eef1f6;
+    --muted: #a9b1bf;
+    --line: #303746;
+    --accent: #7aa2ff;
+    --danger: #ff7b7b;
+    --ok: #70d6a8;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(122,162,255,.12), transparent 30%),
+      var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  }
+
+  .wrap {
+    width: min(980px, calc(100% - 28px));
+    margin: 36px auto 60px;
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: clamp(26px, 4vw, 38px);
+    line-height: 1.15;
+  }
+
+  .lead {
+    margin: 0 0 24px;
+    color: var(--muted);
+    line-height: 1.75;
+  }
+
+  .warning {
+    border: 1px solid rgba(255,123,123,.45);
+    background: rgba(255,123,123,.08);
+    padding: 14px 16px;
+    border-radius: 14px;
+    line-height: 1.65;
+    margin-bottom: 18px;
+  }
+
+  .warning strong { color: #ffd0d0; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,.018), transparent), var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 14px 34px rgba(0,0,0,.16);
+  }
+
+  .card h2 {
+    margin: 0 0 14px;
+    font-size: 18px;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .stack {
+    display: grid;
+    gap: 12px;
+  }
+
+  label {
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  input[type="number"],
+  select {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: var(--panel2);
+    color: var(--text);
+    border-radius: 11px;
+    padding: 10px 12px;
+    font-size: 16px;
+    outline: none;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+
+  button {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: var(--panel2);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 11px;
+    cursor: pointer;
+    font-weight: 650;
+    transition: transform .05s ease, border-color .15s ease, background .15s ease;
+  }
+
+  button:hover { border-color: #526075; }
+  button:active { transform: translateY(1px); }
+
+  button.primary {
+    background: #2c4d99;
+    border-color: #5277d9;
+  }
+
+  button.stop {
+    background: #5a2727;
+    border-color: #8a4444;
+  }
+
+  button.freq {
+    min-width: 86px;
+  }
+
+  button.freq.active {
+    outline: 2px solid var(--accent);
+    border-color: transparent;
+  }
+
+  .big {
+    font-size: clamp(34px, 6vw, 58px);
+    font-variant-numeric: tabular-nums;
+    font-weight: 760;
+    letter-spacing: -.03em;
+  }
+
+  .unit {
+    font-size: .38em;
+    color: var(--muted);
+    margin-left: 6px;
+  }
+
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; line-height: 1.6; }
+  .ok { color: var(--ok); }
+  .danger { color: var(--danger); }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 7px 10px;
+    color: var(--muted);
+    background: rgba(255,255,255,.02);
+    font-size: 13px;
+  }
+
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  @media (max-width: 560px) {
+    .preset-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .meter {
+    width: 100%;
+    height: 8px;
+    border-radius: 99px;
+    overflow: hidden;
+    background: #272d38;
+  }
+
+  .meter > div {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #5f85e7, #70d6a8);
+    transition: width .12s linear;
+  }
+
+  .divider {
+    border: 0;
+    border-top: 1px solid var(--line);
+    margin: 16px 0;
+  }
+
+  code {
+    background: rgba(255,255,255,.055);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 6px;
+    padding: 1px 5px;
+  }
+
+  details {
+    margin-top: 16px;
+    color: var(--muted);
+  }
+
+  summary {
+    cursor: pointer;
+    color: var(--text);
+  }
+
+  footer {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.65;
+    margin-top: 18px;
+  }
+</style>
+</head>
+
+<body>
+<main class="wrap">
+  <h1>Web Audio 高頻聽覺比較測試</h1>
+  <p class="lead">
+    由瀏覽器直接用 <strong>Web Audio API</strong> 產生純正弦波。唔經 YouTube、
+    影片壓縮或變速演算法，適合做左右耳「相對比較」。
+  </p>
+
+  <div class="warning">
+    <strong>安全提示：</strong>
+    呢個頁面唔係醫療級 audiometer，亦無法知道你耳機實際輸出幾多 dB SPL。
+    <strong>開始前請先將系統／耳機音量調低</strong>，唔好因為高頻聽唔到就不斷加大音量。
+    如果出現耳痛、耳鳴加劇、耳塞感、眩暈或明顯不適，立即停止。
+  </div>
+
+  <section class="grid">
+    <div class="card">
+      <h2>頻率</h2>
+
+      <div class="big">
+        <span id="freqReadout">15000</span><span class="unit">Hz</span>
+      </div>
+
+      <div class="stack" style="margin-top:14px">
+        <div>
+          <label for="freq">自訂頻率（1,000–20,000 Hz）</label>
+          <input id="freq" type="number" min="1000" max="20000" step="10" value="15000" />
+        </div>
+
+        <div class="row">
+          <button data-delta="-1000">−1000</button>
+          <button data-delta="-100">−100</button>
+          <button data-delta="-10">−10</button>
+          <button data-delta="10">+10</button>
+          <button data-delta="100">+100</button>
+          <button data-delta="1000">+1000</button>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <label>常用固定頻率</label>
+      <div class="preset-grid" style="margin-top:9px">
+        <button class="freq" data-freq="8000">8 kHz</button>
+        <button class="freq" data-freq="10000">10 kHz</button>
+        <button class="freq" data-freq="12000">12 kHz</button>
+        <button class="freq" data-freq="14000">14 kHz</button>
+        <button class="freq active" data-freq="15000">15 kHz</button>
+        <button class="freq" data-freq="16000">16 kHz</button>
+        <button class="freq" data-freq="17000">17 kHz</button>
+        <button class="freq" data-freq="18000">18 kHz</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>播放設定</h2>
+
+      <div class="stack">
+        <div>
+          <label for="ear">輸出耳朵</label>
+          <select id="ear">
+            <option value="both">左右耳</option>
+            <option value="left">只左耳</option>
+            <option value="right">只右耳</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="duration">每次播放時間</label>
+          <select id="duration">
+            <option value="0.5">0.5 秒</option>
+            <option value="1">1 秒</option>
+            <option value="1.5" selected>1.5 秒</option>
+            <option value="2">2 秒</option>
+            <option value="3">3 秒</option>
+          </select>
+        </div>
+
+        <div>
+          <div class="row" style="justify-content:space-between">
+            <label for="level">數位訊號電平</label>
+            <span class="pill"><span id="levelReadout">−42</span> dBFS</span>
+          </div>
+          <input id="level" type="range" min="-60" max="-24" step="1" value="-42" />
+          <div class="small muted">
+            預設 −42 dBFS；最高限制 −24 dBFS。呢個數值<strong>唔等於</strong>耳邊實際 dB SPL。
+          </div>
+        </div>
+
+        <div class="row">
+          <button id="play" class="primary">▶ 播放短音</button>
+          <button id="stop" class="stop">■ 停止</button>
+        </div>
+
+        <div id="status" class="small muted">尚未播放</div>
+        <div class="meter" aria-hidden="true"><div id="meterBar"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>左右耳 A/B 比較</h2>
+    <p class="small muted">
+      建議保持同一頻率、同一數位電平，只切換左右耳。咁比「一路升頻直到聽唔到」更容易比較兩耳差異。
+    </p>
+    <div class="row">
+      <button id="leftTest">左耳播放</button>
+      <button id="rightTest">右耳播放</button>
+      <button id="bothTest">左右耳播放</button>
+    </div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>建議測試方式</h2>
+    <div class="small muted">
+      <ol style="margin:0; padding-left:20px; line-height:1.9">
+        <li>先將作業系統／耳機音量調到偏低，測試期間盡量唔郁系統音量。</li>
+        <li>由 8–10 kHz 開始，確認左右耳都可以舒服聽到。</li>
+        <li>逐步上到 12、14、15、16 kHz；每個頻率只播放短音。</li>
+        <li>如果某頻率右耳聽唔到，先降低頻率再確認，<strong>唔好直接大幅加音量</strong>。</li>
+        <li>同一頻率重複測幾次，亦可以重新戴一次耳機，睇結果有冇變。</li>
+        <li>重點係左右耳相對差異，唔好將「最高聽到幾多 Hz」當成臨床診斷。</li>
+      </ol>
+    </div>
+
+    <details>
+      <summary>技術說明</summary>
+      <div class="small" style="margin-top:10px; line-height:1.75">
+        <p>
+          本頁使用 <code>OscillatorNode</code> 產生 <code>sine</code> 正弦波，
+          再經過短暫 fade-in / fade-out，避免播放開始／停止時產生 click。
+        </p>
+        <p>
+          左右耳輸出由獨立 GainNode 接入 ChannelMergerNode，
+          唔使用影片播放速度或 pitch-preservation DSP。
+        </p>
+        <p>
+          但最終結果仍然會受耳機頻率響應、左右單元誤差、耳機位置、
+          DAC／音效處理、作業系統音量及耳道形狀影響，所以唔可以代替校準 audiometry。
+        </p>
+      </div>
+    </details>
+  </section>
+
+  <footer>
+    此工具只供非醫療用途嘅相對比較與技術實驗。若近期曾出現單側突發耳鳴，
+    並伴隨持續聽力下降、左右耳明顯不對稱、耳塞感或眩暈，應由耳鼻喉科／聽力師作正式檢查。
+  </footer>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => [...document.querySelectorAll(s)];
+
+  const freqInput = $('#freq');
+  const freqReadout = $('#freqReadout');
+  const levelInput = $('#level');
+  const levelReadout = $('#levelReadout');
+  const earSelect = $('#ear');
+  const durationSelect = $('#duration');
+  const status = $('#status');
+  const meterBar = $('#meterBar');
+
+  let audioCtx = null;
+  let active = null;
+  let meterTimer = null;
+
+  function clamp(v, min, max) {
+    return Math.min(max, Math.max(min, v));
+  }
+
+  function currentFrequency() {
+    return clamp(Number(freqInput.value) || 15000, 1000, 20000);
+  }
+
+  function setFrequency(v) {
+    const f = clamp(Math.round(Number(v) || 15000), 1000, 20000);
+    freqInput.value = f;
+    freqReadout.textContent = f.toLocaleString('en-US').replaceAll(',', '');
+    $$('.freq').forEach(btn => {
+      btn.classList.toggle('active', Number(btn.dataset.freq) === f);
+    });
+  }
+
+  function dbToGain(db) {
+    return Math.pow(10, db / 20);
+  }
+
+  async function ensureContext() {
+    if (!audioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContext({
+        latencyHint: 'interactive'
+      });
+    }
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  function stopTone() {
+    if (meterTimer) {
+      clearInterval(meterTimer);
+      meterTimer = null;
+    }
+    meterBar.style.width = '0%';
+
+    if (!active) {
+      status.textContent = '尚未播放';
+      return;
+    }
+
+    const { osc, master, ctx } = active;
+    const now = ctx.currentTime;
+
+    try {
+      master.gain.cancelScheduledValues(now);
+      master.gain.setValueAtTime(master.gain.value, now);
+      master.gain.linearRampToValueAtTime(0, now + 0.02);
+      osc.stop(now + 0.03);
+    } catch (_) {}
+
+    active = null;
+    status.textContent = '已停止';
+  }
+
+  async function playTone(earOverride = null) {
+    stopTone();
+
+    const ctx = await ensureContext();
+    const freq = currentFrequency();
+    const duration = Number(durationSelect.value);
+    const dbfs = Number(levelInput.value);
+    const targetGain = dbToGain(dbfs);
+    const ear = earOverride || earSelect.value;
+
+    // Master envelope
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0, ctx.currentTime);
+
+    // Independent channel gains
+    const leftGain = ctx.createGain();
+    const rightGain = ctx.createGain();
+
+    if (ear === 'left') {
+      leftGain.gain.value = 1;
+      rightGain.gain.value = 0;
+    } else if (ear === 'right') {
+      leftGain.gain.value = 0;
+      rightGain.gain.value = 1;
+    } else {
+      // Same mono signal to both channels.
+      leftGain.gain.value = 1;
+      rightGain.gain.value = 1;
+    }
+
+    const merger = ctx.createChannelMerger(2);
+
+    osc.connect(master);
+    master.connect(leftGain);
+    master.connect(rightGain);
+    leftGain.connect(merger, 0, 0);
+    rightGain.connect(merger, 0, 1);
+    merger.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+    const fade = Math.min(0.04, duration / 5);
+
+    master.gain.setValueAtTime(0, now);
+    master.gain.linearRampToValueAtTime(targetGain, now + fade);
+    master.gain.setValueAtTime(targetGain, now + Math.max(fade, duration - fade));
+    master.gain.linearRampToValueAtTime(0, now + duration);
+
+    osc.start(now);
+    osc.stop(now + duration + 0.03);
+
+    active = { osc, master, ctx };
+
+    const earName = ear === 'left' ? '左耳' : ear === 'right' ? '右耳' : '左右耳';
+    status.innerHTML =
+      `<span class="ok">播放中</span> · ${freq.toLocaleString()} Hz · ${earName} · ${dbfs} dBFS`;
+
+    const started = performance.now();
+    meterTimer = setInterval(() => {
+      const elapsed = (performance.now() - started) / 1000;
+      const pct = clamp((elapsed / duration) * 100, 0, 100);
+      meterBar.style.width = `${pct}%`;
+      if (elapsed >= duration) {
+        clearInterval(meterTimer);
+        meterTimer = null;
+      }
+    }, 50);
+
+    osc.addEventListener('ended', () => {
+      if (active && active.osc === osc) {
+        active = null;
+        meterBar.style.width = '0%';
+        status.textContent = `完成 · ${freq.toLocaleString()} Hz · ${earName}`;
+      }
+    }, { once: true });
+  }
+
+  freqInput.addEventListener('input', () => setFrequency(freqInput.value));
+
+  $$('[data-delta]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setFrequency(currentFrequency() + Number(btn.dataset.delta));
+    });
+  });
+
+  $$('.freq').forEach(btn => {
+    btn.addEventListener('click', () => setFrequency(Number(btn.dataset.freq)));
+  });
+
+  levelInput.addEventListener('input', () => {
+    levelReadout.textContent = levelInput.value.replace('-', '−');
+  });
+
+  $('#play').addEventListener('click', () => playTone());
+  $('#stop').addEventListener('click', stopTone);
+
+  $('#leftTest').addEventListener('click', () => playTone('left'));
+  $('#rightTest').addEventListener('click', () => playTone('right'));
+  $('#bothTest').addEventListener('click', () => playTone('both'));
+
+  window.addEventListener('pagehide', stopTone);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopTone();
+  });
+
+  setFrequency(15000);
+})();
+</script>
+</body>
+</html>
