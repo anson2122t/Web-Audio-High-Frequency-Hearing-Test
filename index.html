@@ -338,6 +338,56 @@
   </section>
 
   <section class="card" style="margin-top:16px">
+    <h2>音訊裝置資訊</h2>
+    <p class="small muted">
+      Safari / iPhone 通常要先由使用者按一下按鈕建立 AudioContext，之後先可以讀取實際 sample rate。
+    </p>
+
+    <div class="grid" style="margin-top:12px">
+      <div style="background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px">
+        <div class="small muted">AudioContext Sample Rate</div>
+        <div style="font-size:28px;font-weight:760;margin-top:5px">
+          <span id="sampleRateReadout">尚未初始化</span>
+        </div>
+      </div>
+
+      <div style="background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px">
+        <div class="small muted">Nyquist Frequency</div>
+        <div style="font-size:28px;font-weight:760;margin-top:5px">
+          <span id="nyquistReadout">尚未初始化</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button id="initAudio">初始化 / 更新音訊資訊</button>
+    </div>
+
+    <div id="audioInfoNote" class="small muted" style="margin-top:10px">
+      Nyquist frequency = sample rate ÷ 2。數位系統原則上只可以表示低於 Nyquist frequency 嘅頻率。
+    </div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>左右聲道校驗</h2>
+    <p class="small muted">
+      呢個測試使用容易聽到嘅 <strong>500 Hz</strong> 短音。請先用低音量確認：
+      「左聲道」只喺左耳出聲，「右聲道」只喺右耳出聲。
+      如果兩邊同時出聲，請檢查 iPhone 嘅「單聲道音訊」有冇開啟。
+    </p>
+
+    <div class="row">
+      <button id="channelLeft">L · 500 Hz 左聲道</button>
+      <button id="channelRight">R · 500 Hz 右聲道</button>
+      <button id="channelAlternate">L → R 校驗</button>
+    </div>
+
+    <div id="channelStatus" class="small muted" style="margin-top:10px">
+      尚未進行聲道校驗
+    </div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
     <h2>左右耳 A/B 比較</h2>
     <p class="small muted">
       建議保持同一頻率、同一數位電平，只切換左右耳。咁比「一路升頻直到聽唔到」更容易比較兩耳差異。
@@ -402,6 +452,10 @@
   const durationSelect = $('#duration');
   const status = $('#status');
   const meterBar = $('#meterBar');
+  const sampleRateReadout = $('#sampleRateReadout');
+  const nyquistReadout = $('#nyquistReadout');
+  const audioInfoNote = $('#audioInfoNote');
+  const channelStatus = $('#channelStatus');
 
   let audioCtx = null;
   let active = null;
@@ -428,16 +482,45 @@
     return Math.pow(10, db / 20);
   }
 
+  function updateAudioInfo(ctx) {
+    if (!ctx) return;
+
+    const sampleRate = ctx.sampleRate;
+    const nyquist = sampleRate / 2;
+
+    sampleRateReadout.textContent = `${sampleRate.toLocaleString()} Hz`;
+    nyquistReadout.textContent = `${nyquist.toLocaleString()} Hz`;
+
+    const maxTest = 20000;
+    if (nyquist <= maxTest) {
+      audioInfoNote.innerHTML =
+        `<span class="danger">注意：</span>目前 Nyquist frequency 為 ${nyquist.toLocaleString()} Hz，` +
+        `接近或低於頁面最高測試頻率。越接近 Nyquist 上限，測試結果越唔適合解讀。`;
+    } else {
+      audioInfoNote.innerHTML =
+        `<span class="ok">音訊內容已初始化。</span> Sample rate = ${sampleRate.toLocaleString()} Hz；` +
+        `Nyquist frequency = ${nyquist.toLocaleString()} Hz。` +
+        `20 kHz 喺數位頻寬上仍低於 Nyquist 上限，但唔代表耳機可以校準地重播到 20 kHz。`;
+    }
+  }
+
   async function ensureContext() {
     if (!audioCtx) {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) {
+        throw new Error('此瀏覽器不支援 Web Audio API');
+      }
+
       audioCtx = new AudioContext({
         latencyHint: 'interactive'
       });
     }
+
     if (audioCtx.state === 'suspended') {
       await audioCtx.resume();
     }
+
+    updateAudioInfo(audioCtx);
     return audioCtx;
   }
 
@@ -465,6 +548,59 @@
 
     active = null;
     status.textContent = '已停止';
+  }
+
+  async function playCalibrationTone(ear, frequency = 500, duration = 0.8, dbfs = -42) {
+    stopTone();
+
+    const ctx = await ensureContext();
+    const targetGain = dbToGain(dbfs);
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(frequency, ctx.currentTime);
+
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0, ctx.currentTime);
+
+    const leftGain = ctx.createGain();
+    const rightGain = ctx.createGain();
+
+    leftGain.gain.value = ear === 'left' ? 1 : 0;
+    rightGain.gain.value = ear === 'right' ? 1 : 0;
+
+    const merger = ctx.createChannelMerger(2);
+
+    osc.connect(master);
+    master.connect(leftGain);
+    master.connect(rightGain);
+    leftGain.connect(merger, 0, 0);
+    rightGain.connect(merger, 0, 1);
+    merger.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+    const fade = 0.035;
+
+    master.gain.setValueAtTime(0, now);
+    master.gain.linearRampToValueAtTime(targetGain, now + fade);
+    master.gain.setValueAtTime(targetGain, now + duration - fade);
+    master.gain.linearRampToValueAtTime(0, now + duration);
+
+    osc.start(now);
+    osc.stop(now + duration + 0.03);
+
+    active = { osc, master, ctx };
+
+    const earName = ear === 'left' ? '左聲道' : '右聲道';
+    channelStatus.innerHTML =
+      `<span class="ok">播放中：</span>${earName} · ${frequency} Hz · ${dbfs} dBFS`;
+
+    osc.addEventListener('ended', () => {
+      if (active && active.osc === osc) {
+        active = null;
+        channelStatus.textContent = `完成：${earName} · ${frequency} Hz`;
+      }
+    }, { once: true });
   }
 
   async function playTone(earOverride = null) {
@@ -569,6 +705,32 @@
   $('#leftTest').addEventListener('click', () => playTone('left'));
   $('#rightTest').addEventListener('click', () => playTone('right'));
   $('#bothTest').addEventListener('click', () => playTone('both'));
+
+  $('#initAudio').addEventListener('click', async () => {
+    try {
+      const ctx = await ensureContext();
+      updateAudioInfo(ctx);
+    } catch (err) {
+      audioInfoNote.innerHTML = `<span class="danger">${err.message}</span>`;
+    }
+  });
+
+  $('#channelLeft').addEventListener('click', () => playCalibrationTone('left'));
+  $('#channelRight').addEventListener('click', () => playCalibrationTone('right'));
+
+  $('#channelAlternate').addEventListener('click', async () => {
+    try {
+      channelStatus.textContent = '校驗中：先播放左聲道…';
+      await playCalibrationTone('left');
+
+      setTimeout(() => {
+        channelStatus.textContent = '校驗中：再播放右聲道…';
+        playCalibrationTone('right');
+      }, 1150);
+    } catch (err) {
+      channelStatus.innerHTML = `<span class="danger">${err.message}</span>`;
+    }
+  });
 
   window.addEventListener('pagehide', stopTone);
   document.addEventListener('visibilitychange', () => {
