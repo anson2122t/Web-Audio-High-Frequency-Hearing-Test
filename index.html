@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Web Audio 高頻聽覺比較測試</title>
+<title>Web Audio 全頻段聽覺比較測試</title>
 <style>
   :root {
     color-scheme: dark;
@@ -239,17 +239,17 @@
 
 <body>
 <main class="wrap">
-  <h1>Web Audio 高頻聽覺比較測試</h1>
+  <h1>Web Audio 全頻段聽覺比較測試</h1>
   <p class="lead">
     由瀏覽器直接用 <strong>Web Audio API</strong> 產生純正弦波。唔經 YouTube、
-    影片壓縮或變速演算法，適合做左右耳「相對比較」。
+    影片壓縮或變速演算法，適合做 20 Hz～20 kHz 左右耳「相對比較」。
   </p>
 
   <div class="warning">
     <strong>安全提示：</strong>
     呢個頁面唔係醫療級 audiometer，亦無法知道你耳機實際輸出幾多 dB SPL。
     <strong>開始前請先將系統／耳機音量調低</strong>，唔好因為高頻聽唔到就不斷加大音量。
-    如果出現耳痛、耳鳴加劇、耳塞感、眩暈或明顯不適，立即停止。
+    如果出現耳痛、耳鳴加劇、耳塞感、眩暈或明顯不適，立即停止。<br><strong>20～40 Hz 特別容易因為耳機低頻輸出不足而令人誤以為「聽唔到」；唔好為咗追低頻而大幅加音量。</strong>
   </div>
 
   <section class="grid">
@@ -262,14 +262,16 @@
 
       <div class="stack" style="margin-top:14px">
         <div>
-          <label for="freq">自訂頻率（1,000–20,000 Hz）</label>
-          <input id="freq" type="number" min="1000" max="20000" step="10" value="15000" />
+          <label for="freq">自訂頻率（20–20,000 Hz）</label>
+          <input id="freq" type="number" min="20" max="20000" step="1" value="15000" />
         </div>
 
         <div class="row">
           <button data-delta="-1000">−1000</button>
           <button data-delta="-100">−100</button>
           <button data-delta="-10">−10</button>
+          <button data-delta="-1">−1</button>
+          <button data-delta="1">+1</button>
           <button data-delta="10">+10</button>
           <button data-delta="100">+100</button>
           <button data-delta="1000">+1000</button>
@@ -280,14 +282,27 @@
 
       <label>常用固定頻率</label>
       <div class="preset-grid" style="margin-top:9px">
+        <button class="freq" data-freq="20">20 Hz</button>
+        <button class="freq" data-freq="30">30 Hz</button>
+        <button class="freq" data-freq="40">40 Hz</button>
+        <button class="freq" data-freq="50">50 Hz</button>
+        <button class="freq" data-freq="63">63 Hz</button>
+        <button class="freq" data-freq="80">80 Hz</button>
+        <button class="freq" data-freq="100">100 Hz</button>
+        <button class="freq" data-freq="125">125 Hz</button>
+        <button class="freq" data-freq="250">250 Hz</button>
+        <button class="freq" data-freq="500">500 Hz</button>
+        <button class="freq" data-freq="1000">1 kHz</button>
+        <button class="freq" data-freq="2000">2 kHz</button>
+        <button class="freq" data-freq="4000">4 kHz</button>
         <button class="freq" data-freq="8000">8 kHz</button>
         <button class="freq" data-freq="10000">10 kHz</button>
         <button class="freq" data-freq="12000">12 kHz</button>
         <button class="freq" data-freq="14000">14 kHz</button>
         <button class="freq active" data-freq="15000">15 kHz</button>
         <button class="freq" data-freq="16000">16 kHz</button>
-        <button class="freq" data-freq="17000">17 kHz</button>
         <button class="freq" data-freq="18000">18 kHz</button>
+        <button class="freq" data-freq="20000">20 kHz</button>
       </div>
     </div>
 
@@ -404,8 +419,8 @@
     <div class="small muted">
       <ol style="margin:0; padding-left:20px; line-height:1.9">
         <li>先將作業系統／耳機音量調到偏低，測試期間盡量唔郁系統音量。</li>
-        <li>由 8–10 kHz 開始，確認左右耳都可以舒服聽到。</li>
-        <li>逐步上到 12、14、15、16 kHz；每個頻率只播放短音。</li>
+        <li>如果測一般頻段，建議由 500 Hz 或 1 kHz 開始，確認左右耳都可以舒服聽到。</li>
+        <li>之後可以向下測 250、125、80、40 Hz，或者向上測 2、4、8、12、14、15、16 kHz；每個頻率只播放短音。</li>
         <li>如果某頻率右耳聽唔到，先降低頻率再確認，<strong>唔好直接大幅加音量</strong>。</li>
         <li>同一頻率重複測幾次，亦可以重新戴一次耳機，睇結果有冇變。</li>
         <li>重點係左右耳相對差異，唔好將「最高聽到幾多 Hz」當成臨床診斷。</li>
@@ -432,7 +447,7 @@
   </section>
 
   <footer>
-    此工具只供非醫療用途嘅相對比較與技術實驗。若近期曾出現單側突發耳鳴，
+    此工具只供非醫療用途嘅 20 Hz～20 kHz 相對比較與技術實驗。若近期曾出現單側突發耳鳴，
     並伴隨持續聽力下降、左右耳明顯不對稱、耳塞感或眩暈，應由耳鼻喉科／聽力師作正式檢查。
   </footer>
 </main>
@@ -466,11 +481,11 @@
   }
 
   function currentFrequency() {
-    return clamp(Number(freqInput.value) || 15000, 1000, 20000);
+    return clamp(Number(freqInput.value) || 15000, 20, 20000);
   }
 
   function setFrequency(v) {
-    const f = clamp(Math.round(Number(v) || 15000), 1000, 20000);
+    const f = clamp(Math.round(Number(v) || 15000), 20, 20000);
     freqInput.value = f;
     freqReadout.textContent = f.toLocaleString('en-US').replaceAll(',', '');
     $$('.freq').forEach(btn => {
